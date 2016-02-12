@@ -1,8 +1,7 @@
 (function ($) {
   if (!$.Dwec) {
     $.Dwec = new Object();
-  }
-  ;
+  };
   $.Dwec.Calendar = function (el, getData, options) {
     // To avoid scope issues, use 'base' instead of 'this'
     // to reference this class from internal events and functions.
@@ -16,116 +15,57 @@
       base.getData = getData;
       base.options = $.extend({}, $.Dwec.Calendar.defaultOptions, options);
       // Put your initialization code here
-      base.renderGenericEvents();
       base.renderCalendar();
-      base.onDragOverDays();
     };
 
-    base.onDragOverDays = function () {
-      $('.fc-day').each(function (key, value) {
-        $(this).on("dragover", function (event) {
-          event.preventDefault();
-          event.stopPropagation();
-          $(this).addClass('dragging');
-          this.style.backgroundColor = 'rgba(23,23,23,0.5)';
-        });
-
-        $(this).on("dragleave", function (event) {
-          event.preventDefault();
-          event.stopPropagation();
-          $(this).removeClass('dragging');
-          this.style.backgroundColor = 'rgba(255,255,255,1)';
-        });
-
-        $(this).on("drop", function (event) {
-          event.preventDefault();
-          event.stopPropagation();
-          this.style.backgroundColor = 'rgba(255,255,255,1)';
-          var fecha = this.getAttribute('data-date');
-          var myEvent = {
-            title: "Nuevo evento",
-            allDay: true,
-            start: fecha,
-            end: fecha
-          };
-
-          $.ajax({
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            url: 'http://tomcat7-mycoachgate.rhcloud.com/rest/events/add/',
-            method: "POST",
-            dataType: 'json',
-            data: JSON.stringify({
-              "name": "Evento Prueba drag",
-              "description": "Prueba drag",
-              "startDate": fecha,
-              "content": {"attr1": 1, "attr2": "2"}
-            }),
-            statusCode: {
-              200: function (response) {
-                $(el).fullCalendar('renderEvent', myEvent);
-              },
-              201: function (response) {
-                toastr.success("Evento añadido", "Evento dia " + fecha);
-                $(el).fullCalendar('renderEvent', myEvent);
-              },
-              400: function (response) {
-                $(el).fullCalendar('renderEvent', myEvent);
-              },
-              404: function (response) {
-                $(el).fullCalendar('renderEvent', myEvent);
-              }
-            }, success: function () {
-              $(el).fullCalendar('renderEvent', myEvent);
-            }
-          });
-        });
+    /*base.getEvents = function(){
+      $.ajax({
+        method : "GET",
+        url: base.options.url,
+        statusCode: {
+          404: function() {
+            alert( base.options.msgError );
+          }
+        }
+      }).done(function(data){
+          base.options.eventsJson=data;
+          console.log(base.options.eventsJson);
       });
-    };
-    base.renderGenericEvents = function () {
-      var divEvents = '<div style="position: relative;" class="{classes}" {attr}>{name}</div>';
-      var classes = 'external-event label label-default ui-draggable ui-draggable-handle';
-      var attr = ' ondragstart="console.log(event)" draggable="true"';
+    };*/
 
-      var $box = $('#event_box');
-      $box.append(divEvents.replace("{classes}", classes).replace('{attr}', attr).replace("{name}", "Cumpleaños"));
-      $box.append(divEvents.replace("{classes}", classes).replace('{attr}', attr).replace("{name}", "Reunion"));
-      $box.append(divEvents.replace("{classes}", classes).replace('{attr}', attr).replace("{name}", "Presentacion"));
-      $box.append(divEvents.replace("{classes}", classes).replace('{attr}', attr).replace("{name}", "Comida"));
-      $box.append(divEvents.replace("{classes}", classes).replace('{attr}', attr).replace("{name}", "Fiesta"));
-      $box.append(divEvents.replace("{classes}", classes).replace('{attr}', attr).replace("{name}", "Vacaciones"));
-
-    };
-    base.renderCalendar = function () {
+    base.renderCalendar = function(){
       $(el).fullCalendar({
-        header:{
-          left:'title',center:'month,agendaWeek',right:'today prev,next'
-        },
         events: function (start, end, timezone, callback) {
           $.ajax({
-            url: 'scripts/statics-events.json',
+            url: base.options.url,
             dataType: 'json',
             data: {
+              // our hypothetical feed requires UNIX timestamps
               start: start.unix(),
               end: end.unix()
             },
             success: function (doc) {
+              //$.each(doc,function(key , val){
+              //toastr.success(val.start, val.title);
+              //})
               var events = [];
               for (var item in doc) {
-                events.push({title: doc[item]['title'], start: doc[item]['start'], allDay: true})
+                events.push({
+                  title: doc[item]['description'],
+                  start: doc[item]['startDate'],
+                  end: doc[item]['endDate'],
+                  allDay: true
+                })
               }
               callback(events);
             },
-            error: function (doc) {
-              toastr.error("La petición ajax ha fallado");
+            error : function (doc) {
+              toastr.error("La peticion ajax ha fallado");
             }
           });
-        },
-        eventRender: function (event, element) {
         }
       });
+
       $("#event_add").click(function () {
         toastr.success("Todo OK!!", "Notifications");
       });
@@ -134,7 +74,10 @@
     base.init();
   };
   $.Dwec.Calendar.defaultOptions = {
-    html: true
+    html: true,
+    url : "http://tomcat7-mycoachgate.rhcloud.com/rest/events/get/",
+    msgError: "Content not found",
+    eventsJson: {}
   };
   $.fn.Dwec_Calendar = function (getData, options) {
     return this.each(function () {
